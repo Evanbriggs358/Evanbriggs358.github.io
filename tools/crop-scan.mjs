@@ -53,6 +53,52 @@ keep.length = 0; for (const i of kept2) keep.push(i);
 idx.setArray(new Uint32Array(keep));
 if (col) { prim.setAttribute('COLOR_0', null); col.dispose(); }
 
+// ---------- Taubin smoothing: removes scan lumpiness without shrinking the model ----------
+// Works on canonical (position-welded) vertices so UV seams move together and never crack.
+const ITER = parseInt(process.argv[8] ?? '0');
+const N = pos.getCount();
+if (ITER > 0) {
+  const deg = new Int32Array(N);
+  const edgeUse = new Map(); // undirected edge -> number of triangles using it (1 = open boundary)
+  const edge = (a, b) => (a < b ? a * N + b : b * N + a);
+  for (let t = 0; t < keep.length; t += 3) {
+    const v = [canon[keep[t]], canon[keep[t + 1]], canon[keep[t + 2]]];
+    for (let e = 0; e < 3; e++) {
+      const a = v[e], b = v[(e + 1) % 3];
+      const k = edge(a, b);
+      const n = edgeUse.get(k) || 0;
+      edgeUse.set(k, n + 1);
+      if (!n) { deg[a]++; deg[b]++; }
+    }
+  }
+  const start = new Int32Array(N + 1);
+  for (let i = 0; i < N; i++) start[i + 1] = start[i] + deg[i];
+  const nbr = new Int32Array(start[N]), fill = start.slice(0, N);
+  const pinned = new Uint8Array(N);
+  for (const [k, n] of edgeUse) {
+    const a = Math.floor(k / N), b = k - a * N;
+    nbr[fill[a]++] = b; nbr[fill[b]++] = a;
+    if (n === 1) pinned[a] = pinned[b] = 1; // keep the cut edges where they are
+  }
+  const P = new Float64Array(N * 3), Q = new Float64Array(N * 3);
+  for (let i = 0; i < N; i++) if (canon[i] === i) { pos.getElement(i, p); P[i * 3] = p[0]; P[i * 3 + 1] = p[1]; P[i * 3 + 2] = p[2]; }
+  const step = (factor) => {
+    for (let i = 0; i < N; i++) {
+      const d = start[i + 1] - start[i];
+      if (!d || pinned[i]) { Q[i * 3] = P[i * 3]; Q[i * 3 + 1] = P[i * 3 + 1]; Q[i * 3 + 2] = P[i * 3 + 2]; continue; }
+      let x = 0, y = 0, z = 0;
+      for (let j = start[i]; j < start[i + 1]; j++) { const n = nbr[j] * 3; x += P[n]; y += P[n + 1]; z += P[n + 2]; }
+      Q[i * 3] = P[i * 3] + factor * (x / d - P[i * 3]);
+      Q[i * 3 + 1] = P[i * 3 + 1] + factor * (y / d - P[i * 3 + 1]);
+      Q[i * 3 + 2] = P[i * 3 + 2] + factor * (z / d - P[i * 3 + 2]);
+    }
+    P.set(Q);
+  };
+  for (let it = 0; it < ITER; it++) { step(0.5); step(-0.53); }
+  for (let i = 0; i < N; i++) { const c0 = canon[i] * 3; pos.setElement(i, [P[c0], P[c0 + 1], P[c0 + 2]]); }
+  console.log('taubin iterations', ITER, 'pinned', pinned.reduce((a, b) => a + b, 0));
+}
+
 // Z-up scan -> Y-up, centered on the drone
 const node = doc.getRoot().listNodes()[0];
 await doc.transform(prune());
@@ -68,5 +114,25 @@ for (let i = 0; i < pos.getCount(); i++) {
 }
 node.setMatrix([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 console.log('size', mx.map((v, k) => ((v - mn[k]) * s).toFixed(2)));
-await doc.transform(prune(), weld(), meshopt({ encoder: MeshoptEncoder, level: 'medium', quantizePosition: 16, quantizeTexcoord: 16 }));
+
+// Seamless normals: accumulate area-weighted face normals per welded position, so shading
+// doesn't crease along UV seams (three.js would compute them per split vertex).
+{
+  const acc = new Float64Array(N * 3), a = [], b = [], c3 = [];
+  for (let t = 0; t < keep.length; t += 3) {
+    pos.getElement(keep[t], a); pos.getElement(keep[t + 1], b); pos.getElement(keep[t + 2], c3);
+    const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2];
+    const vx = c3[0] - a[0], vy = c3[1] - a[1], vz = c3[2] - a[2];
+    const nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+    for (let k = 0; k < 3; k++) { const o = canon[keep[t + k]] * 3; acc[o] += nx; acc[o + 1] += ny; acc[o + 2] += nz; }
+  }
+  const out = new Float32Array(N * 3);
+  for (let i = 0; i < N; i++) {
+    const o = canon[i] * 3, l = Math.hypot(acc[o], acc[o + 1], acc[o + 2]) || 1;
+    out[i * 3] = acc[o] / l; out[i * 3 + 1] = acc[o + 1] / l; out[i * 3 + 2] = acc[o + 2] / l;
+  }
+  prim.setAttribute('NORMAL', doc.createAccessor().setType('VEC3').setArray(out).setBuffer(pos.getBuffer()));
+}
+
+await doc.transform(prune(), weld(), meshopt({ encoder: MeshoptEncoder, level: 'medium', quantizePosition: 16, quantizeTexcoord: 16, quantizeNormal: 12 }));
 await io.write(output, doc);
