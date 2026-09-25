@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evan Briggs</title>
+  <meta name="description" content="Evan Briggs — builder. Scroll through a 3D scan of my 7-inch ArduPilot mapping drone.">
+  <meta name="color-scheme" content="dark">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+      }
+    }
+  </script>
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <canvas id="stage" aria-hidden="true"></canvas>
+  <div id="hotspots" aria-hidden="true"></div>
+
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <span class="mono" id="loader-pct">loading scan 0%</span>
+  </div>
+
+  <nav class="topbar">
+    <a href="#top" class="brand">EB</a>
+    <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
+    <a href="#projects" class="mono">projects</a>
+    <a href="#contact" class="mono">contact</a>
+  </nav>
+
+  <main>
+    <section id="top" class="hero" data-cam="hero">
+      <div class="card card--bare">
+        <p class="eyebrow mono">mapping drone · rev 1</p>
+        <h1>Evan Briggs</h1>
+        <p class="lede">I design, build, and fly things. This is my 7-inch mapping drone. The 3D model you're looking at is a scan built from 69 photos. Scroll down to see how it works.</p>
+        <p class="hint mono"><span class="mouse"></span> scroll · drag to spin</p>
+      </div>
+    </section>
+
+    <section data-cam="frame" data-side="left">
+      <div class="card">
+        <p class="eyebrow mono">01 — frame</p>
+        <h2>Deadcat, drawn from scratch.</h2>
+        <p>The frame uses a 7-inch deadcat layout. The front arms swing wide so the camera gets a clear view with no props in the shot. I designed the arms, plates, and battery and Raspberry Pi mounts in Autodesk Inventor, then 3D-printed and refined them one part at a time.</p>
+        <dl class="specs mono">
+          <div><dt>layout</dt><dd>7" deadcat X</dd></div>
+          <div><dt>cad</dt><dd>Autodesk Inventor</dd></div>
+          <div><dt>power</dt><dd>5000 mAh LiPo</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section data-cam="fc" data-side="right">
+      <div class="card">
+        <p class="eyebrow mono">02 — flight controller</p>
+        <h2>Kakute H7, rescued.</h2>
+        <p>The drone started on INAV. I moved it to ArduPilot for real mission planning, but partway through the switch the USB-C connector tore off the board. I flashed the firmware anyway through STM32 DFU mode, and now every setting and calibration happens over the air.</p>
+        <dl class="specs mono">
+          <div><dt>board</dt><dd>Kakute H7 v1.5</dd></div>
+          <div><dt>mcu</dt><dd>STM32H743</dd></div>
+          <div><dt>firmware</dt><dd>ArduCopter 4.7.0</dd></div>
+          <div><dt>usb</dt><dd class="warn">detached ✕</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section data-cam="pi" data-side="left">
+      <div class="card">
+        <p class="eyebrow mono">03 — companion computer</p>
+        <h2>A Pi that talks for it.</h2>
+        <p>A Raspberry Pi 4B rides along as a companion computer. It bridges the flight controller's serial port to WiFi with <code>mavlink-router</code> and runs its own hotspot, so Mission Planner and my own ground-station app connect wirelessly. A Pi Camera Module 3 handles the imaging.</p>
+        <ol class="flow mono">
+          <li>Kakute H7</li>
+          <li>UART</li>
+          <li>Pi 4B · mavlink-router</li>
+          <li>WiFi hotspot</li>
+          <li>Mission Planner / drone-gcs</li>
+        </ol>
+      </div>
+    </section>
+
+    <section data-cam="scan" data-side="right" class="tall">
+      <div class="card">
+        <p class="eyebrow mono">04 — the model</p>
+        <h2>You've been looking at a scan.</h2>
+        <p>I photographed the real drone from every angle and reconstructed it in RealityScan. Then I cleaned up the mesh and cut it down so it loads in about a second.</p>
+        <div class="stats">
+          <div><span class="num" data-count="69">69</span><span class="mono">photos</span></div>
+          <div><span class="num">4.2M <i>→</i> 118k</span><span class="mono">triangles</span></div>
+          <div><span class="num">171 MB <i>→</i> 1.1 MB</span><span class="mono">on disk</span></div>
+        </div>
+        <p class="small mono">RealityScan → glTF-Transform (decimate · crop · WebP · meshopt) → three.js</p>
+      </div>
+    </section>
+
+    <section data-cam="mission" data-side="left">
+      <div class="card">
+        <p class="eyebrow mono">05 — mission</p>
+        <h2>Built to map.</h2>
+        <p>The goal is to fly autonomous survey grids and stitch the photos into maps. It's still in bring-up. Here's where it stands:</p>
+        <ul class="checklist mono">
+          <li class="done">Frame designed &amp; printed</li>
+          <li class="done">ArduPilot flashed over DFU</li>
+          <li class="active">Pi MAVLink bridge</li>
+          <li>Sensor &amp; radio calibration</li>
+          <li>First hover</li>
+          <li>First mapping mission</li>
+        </ul>
+      </div>
+    </section>
+
+    <section data-cam="hangar" class="hangar" id="hangar">
+      <div class="card card--bare center">
+        <p class="eyebrow mono">06 — hangar</p>
+        <h2>Take the sticks.</h2>
+        <p class="mono hint">drag anywhere to spin it</p>
+      </div>
+    </section>
+
+    <section data-cam="projects" id="projects" class="projects">
+      <h2>Other projects</h2>
+      <div class="grid">
+        <article class="project">
+          <p class="eyebrow mono">hardware · 2026</p>
+          <h3>Mapping Drone</h3>
+          <p>A 7" deadcat quad running ArduPilot, with a Raspberry Pi 4B companion computer for telemetry and imaging.</p>
+          <a href="#top" class="mono">↑ you're here</a>
+        </article>
+        <article class="project">
+          <p class="eyebrow mono">software</p>
+          <h3>drone-gcs</h3>
+          <p>A custom ground-control station that connects to the drone over the Pi's MAVLink bridge.</p>
+          <a href="#" class="mono">view on github →</a>
+        </article>
+        <article class="project">
+          <p class="eyebrow mono">web app</p>
+          <h3>Class Command</h3>
+          <p>A study planner that schedules exam and quiz prep and ramps up study time as due dates get closer.</p>
+          <a href="#" class="mono">view on github →</a>
+        </article>
+      </div>
+    </section>
+
+    <footer id="contact">
+      <h2>Say hi.</h2>
+      <p class="mono"><a href="mailto:you@example.com">you@example.com</a> · <a href="https://github.com/">github</a></p>
+      <p class="small mono">Built with three.js · model scanned in RealityScan</p>
+    </footer>
+  </main>
+</body>
+</html>
