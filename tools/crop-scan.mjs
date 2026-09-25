@@ -68,5 +68,5 @@ for (let i = 0; i < pos.getCount(); i++) {
 }
 node.setMatrix([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
 console.log('size', mx.map((v, k) => ((v - mn[k]) * s).toFixed(2)));
-await doc.transform(prune(), weld(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+await doc.transform(prune(), weld(), meshopt({ encoder: MeshoptEncoder, level: 'medium', quantizePosition: 16, quantizeTexcoord: 16 }));
 await io.write(output, doc);

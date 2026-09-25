@@ -158,6 +158,7 @@ loader.load(
     findAnchors(mesh);
 
     document.getElementById('loader').classList.add('gone');
+    upgradeScan(mesh);
   },
   (e) => {
     if (e.total) document.getElementById('loader-pct').textContent = `loading scan ${Math.round((e.loaded / e.total) * 100)}%`;
@@ -167,6 +168,45 @@ loader.load(
     document.getElementById('loader-pct').textContent = 'could not load the scan';
   }
 );
+
+// Stream in a denser scan once the preview is up. Desktops get the full-resolution scan
+// (every triangle, 8K texture); phones and low-memory devices get the 4K middle tier.
+// The preview mesh stays around as the wireframe for the scan sweep — the dense one
+// would just read as solid blue.
+function upgradeScan(previewMesh) {
+  const caps = renderer.capabilities;
+  const lowEnd = matchMedia('(pointer: coarse)').matches || (navigator.deviceMemory ?? 8) < 4 || caps.maxTextureSize < 8192;
+  const tier = lowEnd
+    ? { url: 'models/drone-mid.glb', label: '675k triangles · 4K texture' }
+    : { url: 'models/drone-hq.glb', label: '1.77M triangles · 8K texture' };
+  const status = document.getElementById('scan-status');
+  status.textContent = 'streaming full-res scan…';
+  loader.load(
+    tier.url,
+    (gltf) => {
+      const hq = gltf.scene.getObjectByProperty('type', 'Mesh');
+      hq.geometry.computeVertexNormals();
+      const oldMap = texMat.map;
+      texMat.map = hq.material.map;
+      texMat.map.anisotropy = caps.getMaxAnisotropy();
+      texMat.needsUpdate = true;
+      hq.material.dispose();
+      hq.material = texMat;
+      model.add(gltf.scene);
+      previewMesh.material = new THREE.MeshBasicMaterial({ visible: false }); // keep its wireframe child
+      oldMap.dispose();
+      status.textContent = `full-res scan · ${tier.label}`;
+      status.classList.add('done');
+    },
+    (e) => {
+      if (e.total) status.textContent = `streaming full-res scan ${Math.round((e.loaded / e.total) * 100)}%`;
+    },
+    (err) => {
+      console.error(err);
+      status.textContent = '';
+    }
+  );
+}
 
 // Pick anchor points straight off the geometry so labels land on real parts.
 // Anchors are stored in pivot space (model at rest, body squared up with X).

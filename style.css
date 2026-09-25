@@ -176,6 +176,14 @@ footer {
 }
 footer a { color: var(--ink); }
 
+#scan-status {
+  position: fixed; right: var(--gutter); bottom: 18px; z-index: 20;
+  font-size: 0.68rem; color: var(--ink-3);
+  pointer-events: none; transition: opacity 1s 4s;
+}
+#scan-status:empty { display: none; }
+#scan-status.done { opacity: 0; }
+
 /* ---------- 3D hotspots ---------- */
 #hotspots { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
 .hs {

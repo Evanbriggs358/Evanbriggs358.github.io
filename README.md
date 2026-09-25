@@ -20,14 +20,34 @@ Then open http://localhost:5180. Add `?cam=fc` (or `hero`, `frame`, `pi`, `scan`
 
 ## Model pipeline
 
-`MappingDrone1.glb` from RealityScan (69 photos, 4.2M triangles, 171 MB with texture) → `models/drone.glb` (118k triangles, 1.1 MB):
+`MappingDrone1.glb` from RealityScan (69 photos, 4.2M triangles, 8K texture, 171 MB) becomes three tiers. The page shows the preview immediately, then streams in `drone-hq.glb` on desktops or `drone-mid.glb` on phones and low-memory devices.
+
+| file | triangles | texture | size |
+|---|---|---|---|
+| `models/drone.glb` (preview) | 118k | 2K | 1.1 MB |
+| `models/drone-mid.glb` | 675k | 4K | 5.3 MB |
+| `models/drone-hq.glb` | 1.77M (full scan resolution) | 8K | 15.6 MB |
 
 ```bash
 npx @gltf-transform/cli weld MappingDrone1.glb welded.glb
+
+# full resolution
+npx @gltf-transform/cli webp welded.glb full_w.glb --quality 98
+node tools/crop-scan.mjs full_w.glb models/drone-hq.glb 1.0 0.45 0.5 3000
+
+# mid
+npx @gltf-transform/cli simplify welded.glb mid_s.glb --ratio 0.3 --error 0.0005
+npx @gltf-transform/cli resize mid_s.glb mid_r.glb --width 4096 --height 4096
+npx @gltf-transform/cli webp mid_r.glb mid_w.glb --quality 95
+node tools/crop-scan.mjs mid_w.glb models/drone-mid.glb 1.0 0.45 0.5 1000
+
+# preview
 npx @gltf-transform/cli simplify welded.glb simp.glb --ratio 0.05 --error 0.001
 npx @gltf-transform/cli resize simp.glb r.glb --width 2048 --height 2048
 npx @gltf-transform/cli webp r.glb w.glb --quality 85
 node tools/crop-scan.mjs w.glb models/drone.glb 1.0 0.45 0.5 400
 ```
+
+The full-resolution crop needs `NODE_OPTIONS=--max-old-space-size=12000`.
 
 `crop-scan.mjs` removes the paper the drone was scanned on (low + bright/red triangles), drops floating scan fragments, converts Z-up to Y-up, and applies meshopt compression. It needs `npm i @gltf-transform/core @gltf-transform/extensions @gltf-transform/functions meshoptimizer`.
