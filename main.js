@@ -170,7 +170,7 @@ loader.load(
     pivot.add(model);
 
     const mesh = model.getObjectByProperty('type', 'Mesh');
-    if (!mesh.geometry.attributes.normal) mesh.geometry.computeVertexNormals(); // models ship seamless normals
+    mesh.geometry.computeVertexNormals();
     const src = mesh.material;
     texMat = new THREE.MeshStandardMaterial({ map: src.map, roughness: 0.72, metalness: 0.15, side: THREE.DoubleSide });
     applyGrade(texMat);
@@ -216,7 +216,7 @@ function upgradeScan(previewMesh) {
     tier.url,
     (gltf) => {
       const hq = gltf.scene.getObjectByProperty('type', 'Mesh');
-      if (!hq.geometry.attributes.normal) hq.geometry.computeVertexNormals();
+      hq.geometry.computeVertexNormals();
       const oldMap = texMat.map;
       texMat.map = hq.material.map;
       texMat.map.anisotropy = caps.getMaxAnisotropy();
