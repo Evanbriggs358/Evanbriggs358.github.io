@@ -336,6 +336,7 @@ canvas.style.touchAction = 'pan-y';
 let narrow = false;
 function resize() {
   const w = innerWidth, h = innerHeight;
+  if (!w || !h) return;
   narrow = w < 760;
   renderer.setSize(w, h, false);
   camera.aspect = w / h;
@@ -357,10 +358,14 @@ const bar = document.getElementById('progress-bar');
 const clock = new THREE.Clock();
 let spin = 0;
 let lastScroll = scrollY;
-const flight = { pitch: 0, lift: 0, drift: 0 };const tmp = new THREE.Vector3();
+const flight = { pitch: 0, lift: 0, drift: 0 };
+const tmp = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 
 function tick() {
+  // A zero-size window (hidden tab, collapsed iframe) would divide by zero and poison
+  // every smoothed value with NaN for good, so just wait until it has a size again.
+  if (!innerWidth || !innerHeight) { clock.getDelta(); requestAnimationFrame(tick); return; }
   const dt = Math.min(clock.getDelta(), 0.05);
   const time = clock.elapsedTime;
   const s = scrollState();
@@ -413,6 +418,7 @@ function tick() {
   flight.pitch = lerp(flight.pitch, Math.max(-0.4, Math.min(0.4, -vel / 5000)) * motion, 0.08);
   flight.lift = lerp(flight.lift, Math.min(0.8, Math.abs(vel) / 4000) * motion, 0.06);
   flight.drift = lerp(flight.drift, s.drift, 0.1); // slow turn while you read a section
+  for (const k in flight) if (!Number.isFinite(flight[k])) flight[k] = 0;
 
   pivot.rotation.set(
     user.pitch + pointer.sy * 0.12 * motion,
