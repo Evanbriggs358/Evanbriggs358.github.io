@@ -208,7 +208,7 @@ const debugCam = new URLSearchParams(location.search).get('cam'); // e.g. ?cam=f
 function scrollState() {
   if (debugCam && KEYS[debugCam]) {
     const p = parseFloat(new URLSearchParams(location.search).get('p') ?? '0.5');
-    return { a: KEYS[debugCam], b: KEYS[debugCam], t: 0, weights: { ...Object.fromEntries(Object.keys(KEYS).map((k) => [k, 0])), [debugCam]: 1 }, scanP: debugCam === 'scan' ? p : 0, missionP: debugCam === 'mission' ? p : 0 };
+    return { a: KEYS[debugCam], b: KEYS[debugCam], t: 0, weights: { ...Object.fromEntries(Object.keys(KEYS).map((k) => [k, 0])), [debugCam]: 1 }, drift: 0, scanP: debugCam === 'scan' ? p : 0, missionP: debugCam === 'mission' ? p : 0 };
   }
   const focus = scrollY + innerHeight / 2;
   let i = 0;
@@ -217,7 +217,10 @@ function scrollState() {
   const b = sections[Math.min(i + 1, sections.length - 1)].dataset.cam;
   const span = centers[i + 1] - centers[i] || 1;
   const raw = clamp01((focus - centers[i]) / span);
-  const t = smooth(clamp01((raw - 0.15) / 0.7)); // hold on each section a little
+  const t = smooth(raw); // no holds — the camera is always travelling
+  // signed distance from the nearest section centre, in screen heights: drives the in-section drift
+  const near = raw < 0.5 ? centers[i] : centers[Math.min(i + 1, centers.length - 1)];
+  const drift = Math.max(-1, Math.min(1, (focus - near) / innerHeight));
   // per-section weight (1 when centered)
   const weights = {};
   sections.forEach((s, k) => {
@@ -228,7 +231,7 @@ function scrollState() {
   const scanP = clamp01((focus - scan.offsetTop) / scan.offsetHeight);
   const mission = sections.find((s) => s.dataset.cam === 'mission');
   const missionP = clamp01((focus - mission.offsetTop) / mission.offsetHeight);
-  return { a: KEYS[a], b: KEYS[b], t, weights, scanP, missionP };
+  return { a: KEYS[a], b: KEYS[b], t, drift, weights, scanP, missionP };
 }
 
 const cur = { pos: new THREE.Vector3(15, 7, 18), look: new THREE.Vector3(), shift: 0.2, fade: 1 };
@@ -282,7 +285,8 @@ const bar = document.getElementById('progress-bar');
 // ---------- frame loop ----------
 const clock = new THREE.Clock();
 let spin = 0;
-const tmp = new THREE.Vector3();
+let lastScroll = scrollY;
+const flight = { pitch: 0, lift: 0, drift: 0 };const tmp = new THREE.Vector3();
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
 
 function tick() {
@@ -331,8 +335,20 @@ function tick() {
       user.pitch = lerp(user.pitch, 0, 0.03);
     }
   }
-  pivot.rotation.set(user.pitch, spin + user.yaw, reduceMotion ? 0 : Math.sin(time * 0.9) * 0.025);
-  pivot.position.y = reduceMotion ? 0 : Math.sin(time * 1.3) * 0.12;
+  // flight feel: scroll speed pitches the nose and lifts it, like a quad punching forward
+  const vel = (scrollY - lastScroll) / Math.max(dt, 1e-3);
+  lastScroll = scrollY;
+  const motion = reduceMotion ? 0 : 1;
+  flight.pitch = lerp(flight.pitch, Math.max(-0.4, Math.min(0.4, -vel / 5000)) * motion, 0.08);
+  flight.lift = lerp(flight.lift, Math.min(0.8, Math.abs(vel) / 4000) * motion, 0.06);
+  flight.drift = lerp(flight.drift, s.drift, 0.1); // slow turn while you read a section
+
+  pivot.rotation.set(
+    user.pitch + pointer.sy * 0.12 * motion,
+    spin + user.yaw + flight.drift * 0.9 * motion + pointer.sx * 0.25 * motion,
+    flight.pitch + Math.sin(time * 0.9) * 0.025 * motion
+  );
+  pivot.position.y = (Math.sin(time * 1.3) * 0.12 + flight.lift) * motion;
 
   // scan sweep: down then back up across the scan section
   if (model && bounds) {
