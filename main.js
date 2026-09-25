@@ -28,16 +28,46 @@ renderer.localClippingEnabled = true;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 400);
 
-scene.add(new THREE.HemisphereLight(0xdfe8ff, 0x1a1410, 2.2));
-const key = new THREE.DirectionalLight(0xffffff, 1.6);
+// The scan texture already has the real-world lighting baked in, so keep fill light low
+// (it lifts blacks toward grey) and let a neutral key light do the shaping.
+scene.add(new THREE.HemisphereLight(0xffffff, 0x0c0a08, 1.3));
+const key = new THREE.DirectionalLight(0xffffff, 2.1);
 key.position.set(6, 12, 8);
 scene.add(key);
-const rim = new THREE.DirectionalLight(0x4fd1ff, 2.2);
+const rim = new THREE.DirectionalLight(0x4fd1ff, 1.1);
 rim.position.set(-10, 4, -10);
 scene.add(rim);
-const warm = new THREE.DirectionalLight(0xff8a2a, 1.2);
+const warm = new THREE.DirectionalLight(0xff8a2a, 0.8);
 warm.position.set(10, -2, -6);
 scene.add(warm);
+
+// Colour grade applied to the scan texture (perceptual space). ?grade=0 turns it off for comparison.
+const GRADE = new URLSearchParams(location.search).get('grade') === '0'
+  ? { black: 0, contrast: 1, saturation: 1 }
+  : {
+      black: 0.035,     // how much near-black gets crushed to true black
+      contrast: 1.12,   // around mid-grey
+      saturation: 1.22, // 1 = as scanned
+    };
+function applyGrade(material) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.gradeBlack = { value: GRADE.black };
+    shader.uniforms.gradeContrast = { value: GRADE.contrast };
+    shader.uniforms.gradeSaturation = { value: GRADE.saturation };
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform float gradeBlack, gradeContrast, gradeSaturation;')
+      .replace('#include <map_fragment>', `#include <map_fragment>
+        {
+          vec3 c = pow(max(diffuseColor.rgb, 0.0), vec3(1.0 / 2.2));
+          c = max(c - gradeBlack, 0.0) / (1.0 - gradeBlack);
+          c = (c - 0.5) * gradeContrast + 0.5;
+          float l = dot(c, vec3(0.2126, 0.7152, 0.0722));
+          c = mix(vec3(l), c, gradeSaturation);
+          diffuseColor.rgb = pow(clamp(c, 0.0, 1.0), vec3(2.2));
+        }`);
+  };
+  material.customProgramCacheKey = () => 'grade';
+}
 
 const pivot = new THREE.Group();   // user drag + idle motion
 scene.add(pivot);
@@ -143,6 +173,7 @@ loader.load(
     mesh.geometry.computeVertexNormals();
     const src = mesh.material;
     texMat = new THREE.MeshStandardMaterial({ map: src.map, roughness: 0.72, metalness: 0.15, side: THREE.DoubleSide });
+    applyGrade(texMat);
     mesh.material = texMat;
 
     wireMat = new THREE.MeshBasicMaterial({ color: 0x4fd1ff, wireframe: true, transparent: true, opacity: 0.35, depthWrite: false });
