@@ -17,7 +17,6 @@ const KEYS = {
   scan:     { pos: [0, 5, 22],      look: [0, 0, 0],      shift: -0.2,  fade: 1 },
   mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: 0.18,  fade: 1 },
   hangar:   { pos: [15, 7, 18],     look: [0, 0.4, 0],    shift: 0,     fade: 1 },
-  projects: { pos: [20, 12, 26],    look: [0, 0, 0],      shift: 0,     fade: 0.15 },
 };
 
 // ---------- renderer / scene ----------
@@ -313,7 +312,7 @@ const user = { yaw: 0, pitch: 0, vyaw: 0 };
 const pointer = { x: 0, y: 0, sx: 0, sy: 0 };
 let dragging = null;
 addEventListener('pointerdown', (e) => {
-  if (e.target.closest('.card:not(.card--bare), .project, a, nav, footer')) return;
+  if (e.target.closest('.card:not(.card--bare), a, nav, footer')) return;
   dragging = { x: e.clientX, y: e.clientY, id: e.pointerId };
   document.body.classList.add('dragging');
 });
@@ -353,6 +352,8 @@ const io = new IntersectionObserver((entries) => {
 }, { threshold: 0.25 });
 document.querySelectorAll('.card').forEach((c) => io.observe(c));
 const bar = document.getElementById('progress-bar');
+const navLinks = [...document.querySelectorAll('.section-link')];
+let activeId = null;
 
 // ---------- frame loop ----------
 const clock = new THREE.Clock();
@@ -478,7 +479,15 @@ function tick() {
     hs.el.style.opacity = clamp01((on - 0.55) * 3).toFixed(2);
   }
 
-  bar.style.transform = `scaleX(${clamp01(scrollY / (document.documentElement.scrollHeight - innerHeight))})`;
+  // highlight the nav link for whichever section is centred
+  let best = null, bestW = 0.5;
+  for (const sec of sections) if (W[sec.dataset.cam] > bestW) { bestW = W[sec.dataset.cam]; best = sec.id; }
+  if (best !== activeId) {
+    activeId = best;
+    navLinks.forEach((a) => a.classList.toggle('active', a.hash === `#${best}`));
+  }
+
+  bar.style.transform =`scaleX(${clamp01(scrollY / (document.documentElement.scrollHeight - innerHeight))})`;
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);

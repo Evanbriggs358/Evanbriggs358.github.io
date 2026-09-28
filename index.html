@@ -3,13 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Evan Briggs</title>
-  <meta name="description" content="Evan Briggs — builder. Scroll through a 3D scan of my 7-inch ArduPilot mapping drone.">
+  <title>Mapping Drone</title>
+  <meta name="description" content="A 7-inch ArduPilot mapping drone by Evan Briggs. Scroll through a 3D scan of the real build.">
+
   <meta name="color-scheme" content="dark">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <!-- bump ?v= when style.css or main.js change so browsers don't keep a stale copy -->
+  <link rel="stylesheet" href="style.css?v=2">
   <script type="importmap">
     {
       "imports": {
@@ -18,7 +20,7 @@
       }
     }
   </script>
-  <script type="module" src="main.js"></script>
+  <script type="module" src="main.js?v=2"></script>
 </head>
 <body>
   <canvas id="stage" aria-hidden="true"></canvas>
@@ -31,23 +33,26 @@
   </div>
 
   <nav class="topbar">
-    <a href="#top" class="brand">EB</a>
+    <a href="#top" class="brand">MAPPING DRONE</a>
     <div class="progress" aria-hidden="true"><span id="progress-bar"></span></div>
-    <a href="#projects" class="mono">projects</a>
-    <a href="#contact" class="mono">contact</a>
+    <a href="#frame" class="mono section-link">frame</a>
+    <a href="#flight" class="mono section-link">flight</a>
+    <a href="#companion" class="mono section-link">companion</a>
+    <a href="#scan" class="mono section-link">scan</a>
+    <a href="#mission" class="mono section-link">mission</a>
   </nav>
 
   <main>
     <section id="top" class="hero" data-cam="hero">
       <div class="card card--bare">
-        <p class="eyebrow mono">mapping drone · rev 1</p>
-        <h1>Evan Briggs</h1>
-        <p class="lede">I design, build, and fly things. This is my 7-inch mapping drone. The 3D model you're looking at is a scan built from 69 photos. Scroll down to see how it works.</p>
+        <p class="eyebrow mono">rev 1 · built by Evan Briggs</p>
+        <h1>Mapping Drone</h1>
+        <p class="lede">A 7-inch deadcat quad running ArduPilot, with a Raspberry Pi riding along to talk for it. Everything you see here is a 3D scan of the real drone, built from 69 photos. Scroll down to take it apart.</p>
         <p class="hint mono"><span class="mouse"></span> scroll · drag to spin</p>
       </div>
     </section>
 
-    <section data-cam="frame" data-side="left">
+    <section id="frame" data-cam="frame" data-side="left">
       <div class="card">
         <p class="eyebrow mono">01 — frame</p>
         <h2>Deadcat, drawn from scratch.</h2>
@@ -60,7 +65,7 @@
       </div>
     </section>
 
-    <section data-cam="fc" data-side="right">
+    <section id="flight" data-cam="fc" data-side="right">
       <div class="card">
         <p class="eyebrow mono">02 — flight controller</p>
         <h2>Kakute H7, rescued.</h2>
@@ -74,7 +79,7 @@
       </div>
     </section>
 
-    <section data-cam="pi" data-side="left">
+    <section id="companion" data-cam="pi" data-side="left">
       <div class="card">
         <p class="eyebrow mono">03 — companion computer</p>
         <h2>A Pi that talks for it.</h2>
@@ -89,7 +94,7 @@
       </div>
     </section>
 
-    <section data-cam="scan" data-side="right" class="tall">
+    <section id="scan" data-cam="scan" data-side="right" class="tall">
       <div class="card">
         <p class="eyebrow mono">04 — the model</p>
         <h2>You've been looking at a scan.</h2>
@@ -104,7 +109,7 @@
       </div>
     </section>
 
-    <section data-cam="mission" data-side="left">
+    <section id="mission" data-cam="mission" data-side="left">
       <div class="card">
         <p class="eyebrow mono">05 — mission</p>
         <h2>Built to map.</h2>
@@ -128,32 +133,9 @@
       </div>
     </section>
 
-    <section data-cam="projects" id="projects" class="projects">
-      <h2>Other projects</h2>
-      <div class="grid">
-        <article class="project">
-          <p class="eyebrow mono">hardware · 2026</p>
-          <h3>Mapping Drone</h3>
-          <p>A 7" deadcat quad running ArduPilot, with a Raspberry Pi 4B companion computer for telemetry and imaging.</p>
-          <a href="#top" class="mono">↑ you're here</a>
-        </article>
-        <article class="project">
-          <p class="eyebrow mono">software</p>
-          <h3>drone-gcs</h3>
-          <p>A custom ground-control station that connects to the drone over the Pi's MAVLink bridge.</p>
-          <a href="#" class="mono">view on github →</a>
-        </article>
-        <article class="project">
-          <p class="eyebrow mono">web app</p>
-          <h3>Class Command</h3>
-          <p>A study planner that schedules exam and quiz prep and ramps up study time as due dates get closer.</p>
-          <a href="#" class="mono">view on github →</a>
-        </article>
-      </div>
-    </section>
-
     <footer id="contact">
-      <h2>Say hi.</h2>
+      <p class="eyebrow mono">designed, built &amp; scanned by</p>
+      <h2>Evan Briggs</h2>
       <p class="mono"><a href="mailto:you@example.com">you@example.com</a> · <a href="https://github.com/">github</a></p>
       <p class="small mono">Built with three.js · model scanned in RealityScan</p>
     </footer>

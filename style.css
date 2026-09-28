@@ -71,13 +71,14 @@ body.dragging, body.dragging * { cursor: grabbing !important; user-select: none;
 }
 .topbar a { text-decoration: none; color: var(--ink-2); transition: color 0.2s; }
 .topbar a:hover { color: var(--ink); }
-.brand { font-weight: 700; letter-spacing: 0.04em; color: var(--ink) !important; }
+.brand { font-weight: 700; letter-spacing: 0.1em; font-size: 0.82rem; color: var(--ink) !important; white-space: nowrap; }
+.section-link.active { color: var(--accent); }
 .progress { flex: 1; height: 1px; background: var(--line); position: relative; overflow: hidden; }
 .progress span { position: absolute; inset: 0; background: var(--accent); transform-origin: left; transform: scaleX(0); }
 
 /* ---------- sections ---------- */
 main { position: relative; z-index: 10; pointer-events: none; }
-main a, main .card, main .project, footer { pointer-events: auto; }
+main a, main .card, footer { pointer-events: auto; }
 section {
   min-height: 100vh;
   display: flex; align-items: center;
@@ -155,25 +156,13 @@ p { margin: 0 0 14px; color: var(--ink-2); }
 .hangar { min-height: 120vh; align-items: flex-end; }
 .hangar .card { padding-bottom: 8vh; }
 
-/* ---------- projects ---------- */
-.projects { flex-direction: column; align-items: stretch; justify-content: center; }
-.projects > h2 { margin-bottom: 28px; }
-.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
-.project {
-  padding: 24px; border: 1px solid var(--line); border-radius: 14px;
-  background: var(--card); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  display: flex; flex-direction: column;
-  transition: border-color 0.25s, transform 0.25s;
-}
-.project:hover { border-color: rgba(255,138,42,0.5); transform: translateY(-3px); }
-.project p:not(.eyebrow) { flex: 1; }
-.project a { color: var(--accent); text-decoration: none; }
-
 footer {
   position: relative; z-index: 10;
-  padding: 18vh var(--gutter) 48px;
+  padding: 10vh var(--gutter) 48px;
   text-align: center;
+  background: linear-gradient(to bottom, transparent, var(--bg) 40%);
 }
+footer .eyebrow { margin-bottom: 6px; }
 footer a { color: var(--ink); }
 
 #scan-status {
@@ -216,6 +205,7 @@ footer a { color: var(--ink); }
   .card { max-width: none; width: 100%; padding: 22px; }
   .card--bare { padding: 0; }
   .topbar { gap: 14px; }
+  .section-link { display: none; }
   .hs-line, .hs-label { display: none; }
 }
 

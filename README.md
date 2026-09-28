@@ -1,6 +1,6 @@
-# Portfolio
+# Mapping Drone
 
-A personal portfolio built around a photogrammetry scan of my 7" ArduPilot mapping drone. As you scroll, the camera moves around the drone and labels its parts. The scan sweeps into a wireframe, and a survey path draws itself underneath.
+A one-project site about my 7" ArduPilot mapping drone, built around a photogrammetry scan of it. As you scroll, the camera moves around the drone and labels its parts. The scan sweeps into a wireframe, and a survey path draws itself underneath.
 
 Plain static files (three.js via CDN, no build step). Deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`.
 
@@ -14,7 +14,7 @@ Then open http://localhost:5180. Add `?cam=fc` (or `hero`, `frame`, `pi`, `scan`
 
 ## Editing
 
-- **Text / projects / contact** → `index.html`
+- **Text / contact** → `index.html` (bump the `?v=` on `style.css` and `main.js` there whenever you change those files, so visitors don't get a stale cached copy)
 - **Camera angles per section** → `KEYS` at the top of `main.js`
 - **3D labels** → `HOTSPOTS` and `findAnchors()` in `main.js`
 
