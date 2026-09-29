@@ -179,6 +179,15 @@ const pathGeo = new THREE.BufferGeometry();
 }
 survey.add(new THREE.Line(pathGeo, pathMat));
 const pathCount = 16;
+// Untouched copy of the corners plus cumulative distance, so the line can grow continuously:
+// the vertex after the last finished corner is moved to the current head position each frame.
+const pathCorners = Float32Array.from(pathGeo.attributes.position.array);
+const pathDist = [0];
+for (let i = 1; i < pathCount; i++) {
+  const o = i * 3, p = o - 3;
+  pathDist.push(pathDist[i - 1] + Math.hypot(pathCorners[o] - pathCorners[p], pathCorners[o + 2] - pathCorners[p + 2]));
+}
+const pathTotal = pathDist[pathCount - 1];
 // a camera-footprint square that follows the path
 const footprint = new THREE.LineLoop(
   new THREE.BufferGeometry().setFromPoints([[-2, -1.4], [2, -1.4], [2, 1.4], [-2, 1.4]].map(([x, z]) => new THREE.Vector3(x, 0.05, z))),
@@ -522,15 +531,21 @@ function tick() {
   gridMat.opacity = 0.18 * m;
   pathMat.opacity = m;
   footprint.material.opacity = m;
-  const drawn = Math.floor(clamp01(s.missionP * 1.4 - 0.1) * pathCount * 100) / 100;
-  pathGeo.setDrawRange(0, Math.max(0, Math.ceil(drawn)));
   {
-    const pos = pathGeo.attributes.position;
-    const seg = Math.min(pathCount - 2, Math.floor(drawn));
-    const f = Math.min(1, drawn - seg);
-    _a.fromBufferAttribute(pos, seg);
-    _b.fromBufferAttribute(pos, Math.min(seg + 1, pathCount - 1));
-    footprint.position.copy(_a.lerp(_b, f));
+    // grow the path by distance flown, so it extends smoothly along each row
+    const d = clamp01(s.missionP * 1.4 - 0.1) * pathTotal;
+    let seg = 0;
+    while (seg < pathCount - 2 && pathDist[seg + 1] <= d) seg++;
+    const f = clamp01((d - pathDist[seg]) / (pathDist[seg + 1] - pathDist[seg]));
+    const arr = pathGeo.attributes.position.array;
+    arr.set(pathCorners);
+    const o = seg * 3, n = o + 3;
+    const hx = pathCorners[o] + (pathCorners[n] - pathCorners[o]) * f;
+    const hz = pathCorners[o + 2] + (pathCorners[n + 2] - pathCorners[o + 2]) * f;
+    arr[n] = hx; arr[n + 2] = hz; // head vertex sits exactly where the aircraft is
+    pathGeo.attributes.position.needsUpdate = true;
+    pathGeo.setDrawRange(0, d > 0 ? seg + 2 : 0);
+    footprint.position.set(hx, 0.02, hz);
   }
   survey.visible = m > 0.01;
   // contours only while the section is mostly on screen, so they're gone before the next one
