@@ -92,6 +92,63 @@ shadow.rotation.x = -Math.PI / 2;
 shadow.position.y = -3.1;
 scene.add(shadow);
 
+// ---------- topographic contours under the survey grid (mission section) ----------
+// Generated rolling ground drawn as glowing contour lines only — no fill, so the page
+// background shows through. Fades in while the grid draws and out as you scroll on.
+function hash2(i, j) {
+  const h = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return h - Math.floor(h);
+}
+function valueNoise(x, z) {
+  const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
+  const u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+  const a = hash2(i, j), b = hash2(i + 1, j), c = hash2(i, j + 1), d = hash2(i + 1, j + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function terrainHeight(x, z) {
+  let h = 0, amp = 1, f = 1 / 14;
+  for (let k = 0; k < 4; k++) {
+    h += amp * (valueNoise(x * f + 11.3 * k, z * f - 7.1 * k) * 2 - 1);
+    amp *= 0.5; f *= 2;
+  }
+  h *= 2.6;
+  h += 2 * Math.exp(-((x * 0.6 + z * 0.8 - 14) ** 2) / 60); // a low ridge
+  h -= 2 * Math.exp(-((x - (7 * Math.sin(z / 11) - 4)) ** 2) / 10); // a creek valley
+  return h;
+}
+const topoMat = new THREE.ShaderMaterial({
+  transparent: true,
+  depthWrite: false,
+  uniforms: { uOpacity: { value: 0 } },
+  vertexShader: /* glsl */ `
+    varying vec2 vL; varying float vH;
+    void main() {
+      vH = position.y; vL = position.xz;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform float uOpacity;
+    varying vec2 vL; varying float vH;
+    float contour(float v) {
+      float d = abs(fract(v - 0.5) - 0.5);
+      return 1.0 - smoothstep(0.0, fwidth(v) * 1.4, d);
+    }
+    void main() {
+      float lines = contour(vH / 0.5) * 0.35 + contour(vH / 2.5) * 0.75;
+      float edge = 1.0 - smoothstep(18.0, 34.0, length(vL));
+      gl_FragColor = vec4(0.31, 0.82, 1.0, uOpacity * edge * lines);
+    }`,
+});
+const topo = new THREE.Mesh((() => {
+  const g = new THREE.PlaneGeometry(70, 70, 180, 180);
+  g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, terrainHeight(p.getX(i), p.getZ(i)));
+  return g;
+})(), topoMat);
+topo.position.y = -11; // below the flat survey grid, so the grid reads as the flight plane above the ground
+scene.add(topo);
+
 // ---------- survey grid + lawnmower path (mission section) ----------
 const survey = new THREE.Group();
 survey.position.y = -6;
@@ -475,6 +532,9 @@ function tick() {
     footprint.position.copy(_a.lerp(_b, f));
   }
   survey.visible = m > 0.01;
+  // contours only while the section is mostly on screen, so they're gone before the next one
+  topoMat.uniforms.uOpacity.value = smooth(clamp01((m - 0.35) / 0.5));
+  topo.visible = topoMat.uniforms.uOpacity.value > 0.005;
   shadow.material.opacity = 1 - m;
 
   renderer.render(scene, camera);
