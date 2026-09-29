@@ -318,7 +318,7 @@ function findAnchors(mesh) {
   set('stack', stack);
   set('motor', motor);
   set('arm', motor.clone().multiplyScalar(0.55).setY(motor.y * 0.6 + stack.y * 0.4));
-  set('pi', stack.clone().setY(stack.y + 0.8));
+  set('pi', stack.clone().setY(stack.y + 0.4));
   window.__anchors = Object.fromEntries(HOTSPOTS.map((h) => [h.id, h.local.toArray().map((n) => +n.toFixed(2))]));
 }
 
