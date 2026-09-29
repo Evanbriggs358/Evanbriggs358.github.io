@@ -16,6 +16,7 @@ const KEYS = {
   pi:       { pos: [-15, 2.5, 15], look: [0.5, 0.6, 0],    shift: 0.2,   fade: 1 },
   scan:     { pos: [0, 5, 22],      look: [0, 0, 0],      shift: -0.2,  fade: 1 },
   mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: 0.18,  fade: 1 },
+  status:   { pos: [-16, 6, -13],   look: [0, 0, 0],      shift: -0.2,  fade: 1 },
   hangar:   { pos: [15, 7, 18],     look: [0, 0.4, 0],    shift: 0,     fade: 1 },
 };
 
@@ -141,12 +142,12 @@ scene.add(ring);
 
 // ---------- hotspots (model-local anchors resolved after load) ----------
 const HOTSPOTS = [
-  { id: 'motor',   section: 'frame', label: '7" motor & prop' },
-  { id: 'arm',     section: 'frame', label: 'printed deadcat arms' },
-  { id: 'stack',   section: 'fc',    label: 'Kakute H7 flight stack' },
-  { id: 'lipo',    section: 'fc',    label: '5000 mAh LiPo' },
-  { id: 'gps',     section: 'pi',    label: 'GPS / compass mast' },
-  { id: 'pi',      section: 'pi',    label: 'Pi 4B companion' },
+  { id: 'motor',   section: 'frame', label: '2807 1300KV · 7×4.5 prop' },
+  { id: 'arm',     section: 'frame', label: '6 mm carbon deadcat arm' },
+  { id: 'stack',   section: 'fc',    label: 'Kakute H7 + Tekko32 65A' },
+  { id: 'lipo',    section: 'fc',    label: 'CNHL 5000 mAh 6S' },
+  { id: 'gps',     section: 'pi',    label: 'Holybro M10 GPS + compass' },
+  { id: 'pi',      section: 'pi',    label: 'Pi 4B + Camera Module 3' },
 ];
 for (const h of HOTSPOTS) {
   const el = document.createElement('div');

@@ -153,6 +153,12 @@ p { margin: 0 0 14px; color: var(--ink-2); }
 .checklist .active::before { border-color: var(--accent); box-shadow: 0 0 0 4px rgba(255,138,42,0.18); animation: pulse 1.6s infinite; }
 @keyframes pulse { 50% { box-shadow: 0 0 0 7px rgba(255,138,42,0.05); } }
 
+.card p a { color: var(--accent); }
+.lessons-title { font-size: 0.95rem; margin: 24px 0 10px; color: var(--ink); }
+.lessons { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.lessons li { font-size: 0.88rem; line-height: 1.5; color: var(--ink-2); padding-left: 14px; border-left: 2px solid var(--line); }
+.lessons b { color: var(--ink); font-weight: 500; }
+
 .hangar { min-height: 120vh; align-items: flex-end; }
 .hangar .card { padding-bottom: 8vh; }
 

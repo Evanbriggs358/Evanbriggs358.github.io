@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- bump ?v= when style.css or main.js change so browsers don't keep a stale copy -->
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
   <script type="importmap">
     {
       "imports": {
@@ -20,7 +20,7 @@
       }
     }
   </script>
-  <script type="module" src="main.js?v=2"></script>
+  <script type="module" src="main.js?v=3"></script>
 </head>
 <body>
   <canvas id="stage" aria-hidden="true"></canvas>
@@ -39,7 +39,8 @@
     <a href="#flight" class="mono section-link">flight</a>
     <a href="#companion" class="mono section-link">companion</a>
     <a href="#scan" class="mono section-link">scan</a>
-    <a href="#mission" class="mono section-link">mission</a>
+    <a href="#mission" class="mono section-link">ground station</a>
+    <a href="#status" class="mono section-link">status</a>
   </nav>
 
   <main>
@@ -47,20 +48,23 @@
       <div class="card card--bare">
         <p class="eyebrow mono">rev 1 · built by Evan Briggs</p>
         <h1>Mapping Drone</h1>
-        <p class="lede">A 7-inch deadcat quad running ArduPilot, with a Raspberry Pi riding along to talk for it. Everything you see here is a 3D scan of the real drone, built from 69 photos. Scroll down to take it apart.</p>
+        <p class="lede">An autonomous 7-inch quad that flies survey grids on its own and turns the photos into maps and 3D models. It runs ArduPilot, a Raspberry Pi camera payload, and a ground station I wrote from scratch. Everything you see here is a 3D scan of the real drone, built from 69 photos. Scroll down to take it apart.</p>
         <p class="hint mono"><span class="mouse"></span> scroll · drag to spin</p>
       </div>
     </section>
 
     <section id="frame" data-cam="frame" data-side="left">
       <div class="card">
-        <p class="eyebrow mono">01 — frame</p>
-        <h2>Deadcat, drawn from scratch.</h2>
-        <p>The frame uses a 7-inch deadcat layout. The front arms swing wide so the camera gets a clear view with no props in the shot. I designed the arms, plates, and battery and Raspberry Pi mounts in Autodesk Inventor, then 3D-printed and refined them one part at a time.</p>
+        <p class="eyebrow mono">01 — airframe</p>
+        <h2>Long-range bones, mapping payload.</h2>
+        <p>The drone is built on a 7-inch long-range frame with deadcat arms. The front arms swing wide, so the camera looks straight down with no props in the shot. I designed the mounts that turn it into a mapping aircraft in Autodesk Inventor and 3D-printed them: the Raspberry Pi and battery mounts, a straight-down camera mount, and a 15° angled one for better 3D models.</p>
         <dl class="specs mono">
-          <div><dt>layout</dt><dd>7" deadcat X</dd></div>
-          <div><dt>cad</dt><dd>Autodesk Inventor</dd></div>
-          <div><dt>power</dt><dd>5000 mAh LiPo</dd></div>
+          <div><dt>frame</dt><dd>Pyrodrone Source One V3 7"</dd></div>
+          <div><dt>motors</dt><dd>EMAX ECO II 2807 1300KV ×4</dd></div>
+          <div><dt>props</dt><dd>HQProp 7×4.5</dd></div>
+          <div><dt>esc</dt><dd>Tekko32 F4 4-in-1 65A</dd></div>
+          <div><dt>battery</dt><dd>CNHL 5000 mAh 6S 65C</dd></div>
+          <div><dt>mounts</dt><dd>designed in Inventor, printed</dd></div>
         </dl>
       </div>
     </section>
@@ -69,11 +73,13 @@
       <div class="card">
         <p class="eyebrow mono">02 — flight controller</p>
         <h2>Kakute H7, rescued.</h2>
-        <p>The drone started on INAV. I moved it to ArduPilot for real mission planning, but partway through the switch the USB-C connector tore off the board. I flashed the firmware anyway through STM32 DFU mode, and now every setting and calibration happens over the air.</p>
+        <p>The drone started on INAV, which can't run proper waypoint missions or trigger a camera by distance. So I moved it to ArduPilot. Partway through the switch, the USB-C connector tore off the board. I flashed the firmware anyway through the chip's DFU bootloader, and now every setting and calibration happens over the air.</p>
+        <p>The FlySky transmitter stays the manual override the whole time. It's the abort switch.</p>
         <dl class="specs mono">
-          <div><dt>board</dt><dd>Kakute H7 v1.5</dd></div>
-          <div><dt>mcu</dt><dd>STM32H743</dd></div>
+          <div><dt>board</dt><dd>Kakute H7 v1.5 · STM32H743</dd></div>
           <div><dt>firmware</dt><dd>ArduCopter 4.7.0</dd></div>
+          <div><dt>gps</dt><dd>Holybro M10 + compass, on a mast</dd></div>
+          <div><dt>rc</dt><dd>FlySky FS-i6X → iA6B</dd></div>
           <div><dt>usb</dt><dd class="warn">detached ✕</dd></div>
         </dl>
       </div>
@@ -82,14 +88,15 @@
     <section id="companion" data-cam="pi" data-side="left">
       <div class="card">
         <p class="eyebrow mono">03 — companion computer</p>
-        <h2>A Pi that talks for it.</h2>
-        <p>A Raspberry Pi 4B rides along as a companion computer. It bridges the flight controller's serial port to WiFi with <code>mavlink-router</code> and runs its own hotspot, so Mission Planner and my own ground-station app connect wirelessly. A Pi Camera Module 3 handles the imaging.</p>
+        <h2>A Pi that does the photography.</h2>
+        <p>A Raspberry Pi 4B with a Camera Module 3 rides along as the mapping payload. A service I wrote starts on boot and listens to the flight controller over serial. Whenever the autopilot decides it's time for a photo, the Pi takes a 12 MP shot and writes the GPS position, altitude, and heading into the file.</p>
+        <p>It also sends small previews to the laptop over WiFi, so I can confirm the shutter is firing mid-flight instead of finding out afterwards.</p>
         <ol class="flow mono">
-          <li>Kakute H7</li>
-          <li>UART</li>
-          <li>Pi 4B · mavlink-router</li>
-          <li>WiFi hotspot</li>
-          <li>Mission Planner / drone-gcs</li>
+          <li>Kakute H7 · decides when to shoot</li>
+          <li>UART · MAVLink · 921600 baud</li>
+          <li>Pi 4B · capture + geotag service</li>
+          <li>WiFi · previews, telemetry, photo offload</li>
+          <li>drone-gcs on the laptop</li>
         </ol>
       </div>
     </section>
@@ -111,23 +118,46 @@
 
     <section id="mission" data-cam="mission" data-side="left">
       <div class="card">
-        <p class="eyebrow mono">05 — mission</p>
-        <h2>Built to map.</h2>
-        <p>The goal is to fly autonomous survey grids and stitch the photos into maps. It's still in bring-up. Here's where it stands:</p>
+        <p class="eyebrow mono">05 — ground station</p>
+        <h2>It flies the survey itself.</h2>
+        <p>I wrote <a href="https://github.com/Evanbriggs358/drone-gcs" target="_blank" rel="noopener">drone-gcs</a>, a ground station that runs on a laptop. You draw an area on a satellite map, and it works out the flight lines and photo spacing from the camera's optics. Then it uploads the mission to the flight controller and reads it back to check every waypoint.</p>
+        <p>The flight controller owns the whole mission, so a dropped WiFi link only costs the live map, not the aircraft. After landing, the photos come off the Pi and go through OpenDroneMap to become an orthomosaic and a 3D model.</p>
+        <div class="stats">
+          <div><span class="num">151 / 151</span><span class="mono">photos geotagged in a full simulated survey</span></div>
+          <div><span class="num">2.95 cm/px</span><span class="mono">ground resolution at 100 m</span></div>
+          <div><span class="num">265</span><span class="mono">automated tests</span></div>
+        </div>
+        <p class="small mono">Python · pymavlink · FastAPI · MapLibre · three.js · OpenDroneMap · ArduPilot SITL</p>
+      </div>
+    </section>
+
+    <section id="status" data-cam="status" data-side="right" class="tall">
+      <div class="card">
+        <p class="eyebrow mono">06 — status</p>
+        <h2>Where it stands.</h2>
+        <p>The software is proven end to end in ArduPilot's simulator. The real aircraft is in bring-up:</p>
         <ul class="checklist mono">
-          <li class="done">Frame designed &amp; printed</li>
+          <li class="done">Airframe &amp; printed mounts</li>
+          <li class="done">Ground station, proven in simulation</li>
           <li class="done">ArduPilot flashed over DFU</li>
-          <li class="active">Pi MAVLink bridge</li>
-          <li>Sensor &amp; radio calibration</li>
-          <li>First hover</li>
-          <li>First mapping mission</li>
+          <li class="active">Pi ↔ flight controller link</li>
+          <li>Sensor, radio &amp; ESC calibration</li>
+          <li>Props-off motor test &amp; failsafes</li>
+          <li>Hover → Loiter → AutoTune</li>
+          <li>First real survey → map + 3D model</li>
+        </ul>
+        <h3 class="lessons-title">Lessons so far</h3>
+        <ul class="lessons">
+          <li><b>Carbon fibre blocks WiFi.</b> So the system expects the link to drop out: the Pi saves everything to its own storage and fills in any gaps once it reconnects.</li>
+          <li><b>WiFi can deafen the abort link.</b> The RC receiver is also 2.4 GHz, so the Pi's WiFi runs on 5 GHz.</li>
+          <li><b>Read the drift before fixing it.</b> A steady one-way drift points to level calibration, not the compass. I wrote flight-log analysis to tell the two apart.</li>
         </ul>
       </div>
     </section>
 
     <section data-cam="hangar" class="hangar" id="hangar">
       <div class="card card--bare center">
-        <p class="eyebrow mono">06 — hangar</p>
+        <p class="eyebrow mono">07 — hangar</p>
         <h2>Take the sticks.</h2>
         <p class="mono hint">drag anywhere to spin it</p>
       </div>
