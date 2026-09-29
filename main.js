@@ -425,6 +425,16 @@ document.querySelectorAll('.card').forEach((c) => io.observe(c));
 const bar = document.getElementById('progress-bar');
 const navLinks = [...document.querySelectorAll('.section-link')];
 let activeId = null;
+// In-page links scroll without writing #section into the URL, so a copied or autocompleted
+// address never drops a visitor into the middle of the story.
+document.querySelectorAll('a[href^="#"]').forEach((a) => {
+  a.addEventListener('click', (e) => {
+    const target = document.getElementById(a.hash.slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+  });
+});
 
 // ---------- frame loop ----------
 const clock = new THREE.Clock();

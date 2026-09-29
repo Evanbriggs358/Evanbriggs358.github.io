@@ -3,6 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script>
+    // The story starts at the top: drop any #section from the URL before the browser jumps to it,
+    // and don't restore an old scroll position.
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+  </script>
   <title>Mapping Drone — Evan Briggs</title>
   <meta name="description" content="An autonomous 7-inch ArduPilot drone that flies survey grids and turns the photos into maps and 3D models. Scroll through a 3D scan of the real build.">
   <link rel="canonical" href="https://evanbriggs358.github.io/">
@@ -26,7 +32,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- bump ?v= when style.css or main.js change so browsers don't keep a stale copy -->
-  <link rel="stylesheet" href="style.css?v=11">
+  <link rel="stylesheet" href="style.css?v=12">
   <script type="importmap">
     {
       "imports": {
@@ -35,7 +41,7 @@
       }
     }
   </script>
-  <script type="module" src="main.js?v=11"></script>
+  <script type="module" src="main.js?v=12"></script>
 </head>
 <body>
   <canvas id="stage" aria-hidden="true"></canvas>
