@@ -2,7 +2,7 @@
 
 A one-project site about my 7" ArduPilot mapping drone, built around a photogrammetry scan of it. As you scroll, the camera moves around the drone and labels its parts. The scan sweeps into a wireframe, and a survey path draws itself underneath.
 
-Plain static files (three.js via CDN, no build step). Deployed to GitHub Pages by `.github/workflows/pages.yml` on every push to `main`.
+Plain static files (three.js via CDN, no build step). Live at https://evanbriggs358.github.io, served by GitHub Pages straight from the `main` branch, so every push to `main` redeploys it.
 
 ## Run locally
 
