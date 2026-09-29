@@ -15,8 +15,8 @@ const KEYS = {
   fc:       { pos: [15, 1.6, 15],   look: [0, -0.4, 0],   shift: -0.2,  fade: 1 },
   pi:       { pos: [-15, 2.5, 15], look: [0.5, 0.6, 0],    shift: 0.2,   fade: 1 },
   scan:     { pos: [0, 5, 22],      look: [0, 0, 0],      shift: -0.2,  fade: 1 },
-  mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: 0.18,  fade: 1 },
-  status:   { pos: [-18, 7, -15],   look: [0, 0, 0],      shift: -0.17, fade: 1 },
+  mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: -0.18, fade: 1 },
+  status:   { pos: [-18, 7, -15],   look: [0, 0, 0],      shift: 0.17,  fade: 1 },
   hangar:   { pos: [15, 7, 18],     look: [0, 0.4, 0],    shift: 0,     fade: 1 },
 };
 

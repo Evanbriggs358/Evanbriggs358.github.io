@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
   <!-- bump ?v= when style.css or main.js change so browsers don't keep a stale copy -->
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
   <script type="importmap">
     {
       "imports": {
@@ -20,7 +20,7 @@
       }
     }
   </script>
-  <script type="module" src="main.js?v=8"></script>
+  <script type="module" src="main.js?v=9"></script>
 </head>
 <body>
   <canvas id="stage" aria-hidden="true"></canvas>
@@ -38,9 +38,9 @@
     <a href="#frame" class="mono section-link">frame</a>
     <a href="#flight" class="mono section-link">flight</a>
     <a href="#companion" class="mono section-link">companion</a>
-    <a href="#scan" class="mono section-link">scan</a>
     <a href="#mission" class="mono section-link">ground station</a>
     <a href="#status" class="mono section-link">status</a>
+    <a href="#scan" class="mono section-link">scan</a>
   </nav>
 
   <main>
@@ -101,24 +101,9 @@
       </div>
     </section>
 
-    <section id="scan" data-cam="scan" data-side="right" class="tall">
+    <section id="mission" data-cam="mission" data-side="right">
       <div class="card">
-        <p class="eyebrow mono">04 — the model</p>
-        <h2>You've been looking at a scan.</h2>
-        <p>I photographed the real drone from every angle and reconstructed it in RealityScan. Then I cut away the table it was sitting on and compressed the rest. A 1 MB preview appears instantly, and the full-resolution scan streams in behind it.</p>
-        <div class="stats">
-          <div><span class="num">69</span><span class="mono">photos</span></div>
-          <div><span class="num">1.77M</span><span class="mono">triangles at full scan resolution (desktop)</span></div>
-          <div><span class="num">8192²</span><span class="mono">texture</span></div>
-          <div><span class="num">171 MB <i>→</i> 16 MB</span><span class="mono">on disk</span></div>
-        </div>
-        <p class="small mono">RealityScan → glTF-Transform (crop · WebP · meshopt) → three.js</p>
-      </div>
-    </section>
-
-    <section id="mission" data-cam="mission" data-side="left">
-      <div class="card">
-        <p class="eyebrow mono">05 — ground station</p>
+        <p class="eyebrow mono">04 — ground station</p>
         <h2>It flies the survey itself.</h2>
         <p>I wrote <a href="https://github.com/Evanbriggs358/drone-gcs" target="_blank" rel="noopener">drone-gcs</a>, a ground station that runs on a laptop. You draw an area on a satellite map, and it works out the flight lines and photo spacing from the camera's optics. Then it uploads the mission to the flight controller and reads it back to check every waypoint.</p>
         <p>The flight controller owns the whole mission, so a dropped WiFi link only costs the live map, not the aircraft. After landing, the photos come off the Pi and go through OpenDroneMap to become an orthomosaic and a 3D model.</p>
@@ -131,9 +116,9 @@
       </div>
     </section>
 
-    <section id="status" data-cam="status" data-side="right" class="tall">
+    <section id="status" data-cam="status" data-side="left" class="tall">
       <div class="card">
-        <p class="eyebrow mono">06 — status</p>
+        <p class="eyebrow mono">05 — status</p>
         <h2>Where it stands.</h2>
         <p>The software is proven end to end in ArduPilot's simulator. The real aircraft is in bring-up:</p>
         <ul class="checklist mono">
@@ -152,6 +137,21 @@
           <li><b>WiFi can deafen the abort link.</b> The RC receiver is also 2.4 GHz, so the plan is to run the Pi's WiFi on 5 GHz.</li>
           <li><b>Read the drift before fixing it.</b> A steady one-way drift usually points to level calibration rather than the compass. I wrote flight-log analysis to tell the two apart once it flies.</li>
         </ul>
+      </div>
+    </section>
+
+    <section id="scan" data-cam="scan" data-side="right" class="tall">
+      <div class="card">
+        <p class="eyebrow mono">06 — the model</p>
+        <h2>You've been looking at a scan.</h2>
+        <p>I photographed the real drone from every angle and reconstructed it in RealityScan. Then I cut away the table it was sitting on and compressed the rest. A 1 MB preview appears instantly, and the full-resolution scan streams in behind it.</p>
+        <div class="stats">
+          <div><span class="num">69</span><span class="mono">photos</span></div>
+          <div><span class="num">1.77M</span><span class="mono">triangles at full scan resolution (desktop)</span></div>
+          <div><span class="num">8192²</span><span class="mono">texture</span></div>
+          <div><span class="num">171 MB <i>→</i> 16 MB</span><span class="mono">on disk</span></div>
+        </div>
+        <p class="small mono">RealityScan → glTF-Transform (crop · WebP · meshopt) → three.js</p>
       </div>
     </section>
 
