@@ -16,7 +16,7 @@ const KEYS = {
   pi:       { pos: [-15, 2.5, 15], look: [0.5, 0.6, 0],    shift: 0.2,   fade: 1 },
   scan:     { pos: [0, 5, 22],      look: [0, 0, 0],      shift: -0.2,  fade: 1 },
   mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: 0.18,  fade: 1 },
-  status:   { pos: [-16, 6, -13],   look: [0, 0, 0],      shift: -0.2,  fade: 1 },
+  status:   { pos: [-18, 7, -15],   look: [0, 0, 0],      shift: -0.17, fade: 1 },
   hangar:   { pos: [15, 7, 18],     look: [0, 0.4, 0],    shift: 0,     fade: 1 },
 };
 
@@ -305,9 +305,13 @@ function scrollState() {
   return { a: KEYS[a], b: KEYS[b], t, drift, weights, scanP, missionP };
 }
 
-const cur = { pos: new THREE.Vector3(15, 7, 18), look: new THREE.Vector3(), shift: 0.2, fade: 1 };
-const tgt = { pos: new THREE.Vector3(), look: new THREE.Vector3(), shift: 0, fade: 1 };
-
+const cur = { look: new THREE.Vector3(), shift: 0.2, fade: 1 };
+const tgt = { look: new THREE.Vector3(), shift: 0, fade: 1 };
+const sphA = new THREE.Spherical(), sphB = new THREE.Spherical(), tgtS = new THREE.Spherical(), viewS = new THREE.Spherical();
+const curS = new THREE.Spherical().setFromVector3(new THREE.Vector3(...KEYS.hero.pos));
+const _la = new THREE.Vector3();
+// signed shortest turn from angle a to angle b, in (-π, π]
+const angleDelta = (a, b) => ((((b - a + Math.PI) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) - Math.PI;
 // ---------- interaction: drag to spin, pointer parallax ----------
 const user = { yaw: 0, pitch: 0, vyaw: 0 };
 const pointer = { x: 0, y: 0, sx: 0, sy: 0 };
@@ -373,26 +377,37 @@ function tick() {
   const s = scrollState();
   const W = s.weights;
 
-  // target camera from the two neighbouring keyframes
-  tgt.pos.copy(_a.fromArray(s.a.pos)).lerp(_b.fromArray(s.b.pos), s.t);
+  // Target camera between the two neighbouring keyframes. Positions are interpolated as an
+  // orbit around the look point (angle, elevation, distance) rather than a straight line,
+  // so the camera swings around the drone instead of cutting through it.
   tgt.look.copy(_a.fromArray(s.a.look)).lerp(_b.fromArray(s.b.look), s.t);
+  sphA.setFromVector3(_a.fromArray(s.a.pos).sub(_la.fromArray(s.a.look)));
+  sphB.setFromVector3(_b.fromArray(s.b.pos).sub(_la.fromArray(s.b.look)));
+  const dolly = 1 + 0.12 * Math.sin(Math.PI * s.t); // ease out a little mid-move, then back in
+  const fit = Math.min(3.2, Math.max(1, 1.7 / camera.aspect)); // back off on narrow screens
+  tgtS.radius = lerp(sphA.radius, sphB.radius, s.t) * dolly * fit;
+  tgtS.phi = lerp(sphA.phi, sphB.phi, s.t);
+  tgtS.theta = sphA.theta + angleDelta(sphA.theta, sphB.theta) * s.t;
   tgt.shift = lerp(s.a.shift, s.b.shift, s.t);
   tgt.fade = lerp(s.a.fade, s.b.fade, s.t);
   if (narrow) tgt.shift = 0;
-  // back off on narrower screens so the whole drone stays in frame
-  tgt.pos.sub(tgt.look).multiplyScalar(Math.min(3.2, Math.max(1, 1.7 / camera.aspect))).add(tgt.look);
+
   const k = 1 - Math.exp(-dt * 3.2);
-  cur.pos.lerp(tgt.pos, k);
+  curS.radius = lerp(curS.radius, tgtS.radius, k);
+  curS.phi = lerp(curS.phi, tgtS.phi, k);
+  curS.theta += angleDelta(curS.theta, tgtS.theta) * k;
   cur.look.lerp(tgt.look, k);
   cur.shift = lerp(cur.shift, tgt.shift, k);
   cur.fade = lerp(cur.fade, tgt.fade, k);
 
-  // gentle parallax around the camera path
+  // gentle parallax: nudge the orbit toward the pointer
   pointer.sx = lerp(pointer.sx, pointer.x, 0.05);
   pointer.sy = lerp(pointer.sy, pointer.y, 0.05);
-  camera.position.copy(cur.pos);
-  tmp.set(-cur.pos.z, 0, cur.pos.x).normalize().multiplyScalar(pointer.sx * 0.6);
-  camera.position.add(tmp).add(new THREE.Vector3(0, -pointer.sy * 0.5, 0));
+  viewS.copy(curS);
+  viewS.theta += pointer.sx * 0.035;
+  viewS.phi -= pointer.sy * 0.025;
+  viewS.makeSafe();
+  camera.position.setFromSpherical(viewS).add(cur.look);
   camera.lookAt(cur.look);
   const w = innerWidth, h = innerHeight;
   camera.setViewOffset(w, h, -cur.shift * w, narrow ? h * 0.22 : 0, w, h);
