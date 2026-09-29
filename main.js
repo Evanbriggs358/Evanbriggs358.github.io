@@ -500,6 +500,7 @@ function tick() {
     flight.pitch + Math.sin(time * 0.9) * 0.025 * motion
   );
   pivot.position.y = (Math.sin(time * 1.3) * 0.12 + flight.lift) * motion;
+  pivot.scale.setScalar(1 + 0.35 * smooth(W.mission)); // a bit bigger over the survey grid
 
   // scan sweep: down then back up across the scan section
   if (model && bounds) {
