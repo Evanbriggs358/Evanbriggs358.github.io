@@ -15,7 +15,7 @@ const KEYS = {
   fc:       { pos: [15, 1.6, 15],   look: [0, -0.4, 0],   shift: -0.2,  fade: 1 },
   pi:       { pos: [-15, 2.5, 15], look: [0.5, 0.6, 0],    shift: 0.2,   fade: 1 },
   scan:     { pos: [0, 5, 22],      look: [0, 0, 0],      shift: -0.2,  fade: 1 },
-  mission:  { pos: [24, 30, 30],    look: [0, -3, 0],     shift: 0.18,  fade: 1 },
+  mission:  { pos: [26, 34, 42],    look: [2, -5, 0],     shift: 0.2,   fade: 1 },
   status:   { pos: [-18, 7, -15],   look: [0, 0, 0],      shift: -0.17, fade: 1 },
   hangar:   { pos: [15, 7, 18],     look: [0, 0.4, 0],    shift: 0,     fade: 1 },
 };
@@ -92,42 +92,233 @@ shadow.rotation.x = -Math.PI / 2;
 shadow.position.y = -3.1;
 scene.add(shadow);
 
-// ---------- survey grid + lawnmower path (mission section) ----------
+// ---------- survey terrain (mission section) ----------
+// Generated landscape drawn as a survey map: dark ground with glowing contour lines.
+// As the lawnmower path flies over it, every simulated photo stamps its footprint into a
+// coverage texture, and covered ground turns into a shaded relief map — the orthomosaic
+// and elevation model "developing" behind the aircraft.
 const survey = new THREE.Group();
-survey.position.y = -6;
+survey.position.y = -9;
 scene.add(survey);
-const gridMat = new THREE.LineBasicMaterial({ color: 0x4fd1ff, transparent: true, opacity: 0 });
-{
-  const pts = [];
-  const N = 16, S = 2.5, E = N * S;
-  for (let i = -N; i <= N; i++) {
-    pts.push(-E, 0, i * S, E, 0, i * S, i * S, 0, -E, i * S, 0, E);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  survey.add(new THREE.LineSegments(g, gridMat));
+
+function hash2(i, j) {
+  const h = Math.sin(i * 127.1 + j * 311.7) * 43758.5453;
+  return h - Math.floor(h);
 }
-const pathMat = new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 });
-const pathGeo = new THREE.BufferGeometry();
+function valueNoise(x, z) {
+  const i = Math.floor(x), j = Math.floor(z), fx = x - i, fz = z - j;
+  const u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+  const a = hash2(i, j), b = hash2(i + 1, j), c = hash2(i, j + 1), d = hash2(i + 1, j + 1);
+  return a + (b - a) * u + (c - a) * v + (a - b - c + d) * u * v;
+}
+function terrainHeight(x, z) {
+  let h = 0, amp = 1, f = 1 / 14;
+  for (let k = 0; k < 4; k++) {
+    h += amp * (valueNoise(x * f + 11.3 * k, z * f - 7.1 * k) * 2 - 1);
+    amp *= 0.5; f *= 2;
+  }
+  h *= 3.2;
+  h += 2.4 * Math.exp(-((x * 0.6 + z * 0.8 - 14) ** 2) / 60); // a low ridge
+  const creek = 7 * Math.sin(z / 11) - 4;
+  h -= 2.4 * Math.exp(-((x - creek) ** 2) / 10); // a shallow creek valley
+  return h;
+}
+
+// coverage texture: photo footprints accumulate here (additive), sampled by the terrain shader
+const COV = { minX: -24, minZ: -20, sizeX: 48, sizeZ: 40, px: 512 };
+const covCanvas = document.createElement('canvas');
+covCanvas.width = covCanvas.height = COV.px;
+const covCtx = covCanvas.getContext('2d');
+const covTex = new THREE.CanvasTexture(covCanvas);
+covTex.flipY = false;
+
+const terrainMat = new THREE.ShaderMaterial({
+  transparent: true,
+  extensions: { derivatives: true },
+  uniforms: {
+    uOpacity: { value: 0 },
+    uCov: { value: covTex },
+    uCovRect: { value: new THREE.Vector4(COV.minX, COV.minZ, COV.sizeX, COV.sizeZ) },
+  },
+  vertexShader: /* glsl */ `
+    varying vec3 vW; varying vec2 vL; varying float vH;
+    void main() {
+      vH = position.y; vL = position.xz;
+      vec4 w = modelMatrix * vec4(position, 1.0);
+      vW = w.xyz;
+      gl_Position = projectionMatrix * viewMatrix * w;
+    }`,
+  fragmentShader: /* glsl */ `
+    uniform float uOpacity; uniform sampler2D uCov; uniform vec4 uCovRect;
+    varying vec3 vW; varying vec2 vL; varying float vH;
+    float contour(float v) {
+      float fw = fwidth(v);
+      float d = abs(fract(v - 0.5) - 0.5);
+      return 1.0 - smoothstep(0.0, fw * 1.4, d);
+    }
+    void main() {
+      vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
+      if (n.y < 0.0) n = -n;
+      float shade = 0.35 + 0.65 * max(dot(n, normalize(vec3(-0.5, 0.8, 0.35))), 0.0);
+      float minor = contour(vH / 0.5);
+      float major = contour(vH / 2.5);
+
+      vec2 cuv = (vL - uCovRect.xy) / uCovRect.zw;
+      float inside = step(0.0, cuv.x) * step(cuv.x, 1.0) * step(0.0, cuv.y) * step(cuv.y, 1.0);
+      float cov = texture2D(uCov, cuv).r * inside;
+      float mapped = smoothstep(0.02, 0.2, cov);
+
+      vec3 cyan = vec3(0.31, 0.82, 1.0);
+      vec3 unmapped = vec3(0.04, 0.055, 0.07) * shade * 1.5 + cyan * (minor * 0.28 + major * 0.55);
+
+      float t = clamp((vH + 4.0) / 9.0, 0.0, 1.0);
+      vec3 hyp = mix(vec3(0.10, 0.19, 0.13), vec3(0.42, 0.36, 0.24), smoothstep(0.2, 0.7, t));
+      hyp = mix(hyp, vec3(0.74, 0.71, 0.62), smoothstep(0.78, 1.0, t));
+      vec3 mappedCol = hyp * shade * (0.75 + 0.45 * min(cov, 1.0)) + vec3(1.0) * (minor * 0.06 + major * 0.14);
+
+      vec3 col = mix(unmapped, mappedCol, mapped);
+      float edge = 1.0 - smoothstep(26.0, 44.0, length(vL));
+      float a = uOpacity * edge * (0.5 + 0.5 * max(max(minor * 0.6, major), mapped));
+      gl_FragColor = vec4(col, a);
+    }`,
+});
 {
-  const pts = [];
+  const g = new THREE.PlaneGeometry(90, 90, 200, 200);
+  g.rotateX(-Math.PI / 2);
+  const p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) p.setY(i, terrainHeight(p.getX(i), p.getZ(i)));
+  survey.add(new THREE.Mesh(g, terrainMat));
+}
+
+// lawnmower path, flown at a constant height above the ground, sampled finely so it draws smoothly
+const FLY_ALT = 3.5, SAMPLE = 0.4, TRIGGER = 1.0, TICK = 2.0;
+const FOOT = { along: 1.7, across: 3.0 }; // half-extents of one photo's ground footprint
+const pathPts = [];   // {x, z, d, row}
+{
   const W = 18, rows = 8, gap = 4;
+  const corners = [];
   for (let r = 0; r < rows; r++) {
     const z = -((rows - 1) * gap) / 2 + r * gap;
     const [a, b] = r % 2 ? [W, -W] : [-W, W];
-    pts.push(a, 0.02, z, b, 0.02, z);
+    corners.push([a, z, true], [b, z, false]); // leg from a→b is a survey row; b→next a is a turn
   }
-  pathGeo.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
-  pathGeo.setDrawRange(0, 0);
+  let d = 0;
+  for (let c = 0; c < corners.length - 1; c++) {
+    const [x0, z0, isRow] = corners[c], [x1, z1] = corners[c + 1];
+    const len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / SAMPLE));
+    for (let s = c === 0 ? 0 : 1; s <= n; s++) {
+      const f = s / n;
+      pathPts.push({ x: x0 + (x1 - x0) * f, z: z0 + (z1 - z0) * f, d: d + len * f, row: isRow });
+    }
+    d += len;
+  }
 }
+const pathLen = pathPts[pathPts.length - 1].d;
+const flyY = (x, z) => terrainHeight(x, z) + FLY_ALT;
+
+const pathMat = new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 });
+const pathGeo = new THREE.BufferGeometry().setFromPoints(pathPts.map((q) => new THREE.Vector3(q.x, flyY(q.x, q.z), q.z)));
+pathGeo.setDrawRange(0, 0);
 survey.add(new THREE.Line(pathGeo, pathMat));
-const pathCount = 16;
-// a camera-footprint square that follows the path
-const footprint = new THREE.LineLoop(
-  new THREE.BufferGeometry().setFromPoints([[-2, -1.4], [2, -1.4], [2, 1.4], [-2, 1.4]].map(([x, z]) => new THREE.Vector3(x, 0.05, z))),
-  new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 })
-);
-survey.add(footprint);
+
+// drop lines from the path to the ground, to show the terrain-following height
+const ticks = [];
+for (let t = TICK / 2; t < pathLen; t += TICK) ticks.push(t);
+const tickMat = new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 });
+const tickGeo = new THREE.BufferGeometry();
+tickGeo.setAttribute('position', new THREE.Float32BufferAttribute(ticks.flatMap((t) => {
+  const q = pointAt(t);
+  return [q.x, flyY(q.x, q.z), q.z, q.x, terrainHeight(q.x, q.z) + 0.05, q.z];
+}), 3));
+tickGeo.setDrawRange(0, 0);
+survey.add(new THREE.LineSegments(tickGeo, tickMat));
+
+// photo trigger points: evenly spaced along the survey rows only
+const triggers = [];
+{
+  let next = 0;
+  for (let i = 1; i < pathPts.length; i++) {
+    const a = pathPts[i - 1], b = pathPts[i];
+    if (!a.row || b.d - a.d > SAMPLE * 1.5) { continue; }
+    while (next <= b.d) {
+      if (next >= a.d) triggers.push({ d: next, x: a.x + (b.x - a.x) * ((next - a.d) / (b.d - a.d)), z: a.z });
+      next += TRIGGER;
+    }
+  }
+}
+
+function pointAt(d) {
+  let lo = 0, hi = pathPts.length - 1;
+  while (hi - lo > 1) { const mid = (lo + hi) >> 1; if (pathPts[mid].d <= d) lo = mid; else hi = mid; }
+  const a = pathPts[lo], b = pathPts[hi], f = b.d > a.d ? Math.min(1, Math.max(0, (d - a.d) / (b.d - a.d))) : 0;
+  return { x: a.x + (b.x - a.x) * f, z: a.z + (b.z - a.z) * f, i: lo, row: a.row };
+}
+
+// the moving camera: footprint outline draped on the ground, plus the view cone up to the aircraft
+const FOOT_N = 8;
+const footMat = new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 });
+const footGeo = new THREE.BufferGeometry();
+footGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(FOOT_N * 4 * 3), 3));
+const footLine = new THREE.LineLoop(footGeo, footMat);
+footLine.frustumCulled = false;
+survey.add(footLine);
+const coneGeo = new THREE.BufferGeometry();
+coneGeo.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(8 * 3), 3));
+const coneMat = new THREE.LineBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 });
+const cone = new THREE.LineSegments(coneGeo, coneMat);
+cone.frustumCulled = false;
+survey.add(cone);
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 12), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0 }));
+survey.add(head);
+
+let stampedCount = -1;
+function drawCoverage(count) {
+  covCtx.globalCompositeOperation = 'source-over';
+  covCtx.fillStyle = '#000';
+  covCtx.fillRect(0, 0, COV.px, COV.px);
+  covCtx.globalCompositeOperation = 'lighter';
+  covCtx.fillStyle = 'rgba(255,255,255,0.16)';
+  const sx = COV.px / COV.sizeX, sz = COV.px / COV.sizeZ;
+  for (let i = 0; i < count; i++) {
+    const t = triggers[i];
+    covCtx.fillRect((t.x - FOOT.along - COV.minX) * sx, (t.z - FOOT.across - COV.minZ) * sz, FOOT.along * 2 * sx, FOOT.across * 2 * sz);
+  }
+  covTex.needsUpdate = true;
+}
+
+function updateSurvey(progress, opacity) {
+  terrainMat.uniforms.uOpacity.value = opacity;
+  pathMat.opacity = footMat.opacity = coneMat.opacity = head.material.opacity = opacity;
+  tickMat.opacity = 0.35 * opacity;
+  const d = progress * pathLen;
+  const q = pointAt(d);
+  pathGeo.setDrawRange(0, progress > 0 ? q.i + 2 : 0);
+  let tc = 0; while (tc < ticks.length && ticks[tc] <= d) tc++;
+  tickGeo.setDrawRange(0, tc * 2);
+  let n = 0; while (n < triggers.length && triggers[n].d <= d) n++;
+  if (n !== stampedCount) { stampedCount = n; drawCoverage(n); }
+
+  // aircraft marker, footprint and view cone
+  const hy = flyY(q.x, q.z);
+  head.position.set(q.x, hy, q.z);
+  const show = progress > 0 && progress < 1;
+  head.visible = footLine.visible = cone.visible = show;
+  const fp = footGeo.attributes.position, cp = coneGeo.attributes.position;
+  const corners = [[-1, -1], [1, -1], [1, 1], [-1, 1]];
+  let k = 0;
+  for (let c = 0; c < 4; c++) {
+    const [ax, az] = corners[c], [bx, bz] = corners[(c + 1) % 4];
+    for (let s = 0; s < FOOT_N; s++) {
+      const f = s / FOOT_N;
+      const x = q.x + (ax + (bx - ax) * f) * FOOT.along, z = q.z + (az + (bz - az) * f) * FOOT.across;
+      fp.setXYZ(k++, x, terrainHeight(x, z) + 0.08, z);
+    }
+    const x = q.x + ax * FOOT.along, z = q.z + az * FOOT.across;
+    cp.setXYZ(c * 2, q.x, hy, q.z);
+    cp.setXYZ(c * 2 + 1, x, terrainHeight(x, z) + 0.08, z);
+  }
+  fp.needsUpdate = cp.needsUpdate = true;
+}
 
 // ---------- scan sweep: a thin bright ring with a faint haze inside ----------
 const ring = new THREE.Group();
@@ -442,7 +633,8 @@ function tick() {
     spin + user.yaw + flight.drift * 0.9 * motion + pointer.sx * 0.25 * motion,
     flight.pitch + Math.sin(time * 0.9) * 0.025 * motion
   );
-  pivot.position.y = (Math.sin(time * 1.3) * 0.12 + flight.lift) * motion;
+  pivot.position.y = (Math.sin(time * 1.3) * 0.12 + flight.lift) * motion
+    + 3 * smooth(W.mission); // climb clear of the survey terrain
 
   // scan sweep: down then back up across the scan section
   if (model && bounds) {
@@ -459,22 +651,10 @@ function tick() {
     ring.visible = ro > 0.01;
   }
 
-  // survey grid + path
+  // survey terrain + path: the whole grid flies while the mission section is on screen
   const m = W.mission;
-  gridMat.opacity = 0.18 * m;
-  pathMat.opacity = m;
-  footprint.material.opacity = m;
-  const drawn = Math.floor(clamp01(s.missionP * 1.4 - 0.1) * pathCount * 100) / 100;
-  pathGeo.setDrawRange(0, Math.max(0, Math.ceil(drawn)));
-  {
-    const pos = pathGeo.attributes.position;
-    const seg = Math.min(pathCount - 2, Math.floor(drawn));
-    const f = Math.min(1, drawn - seg);
-    _a.fromBufferAttribute(pos, seg);
-    _b.fromBufferAttribute(pos, Math.min(seg + 1, pathCount - 1));
-    footprint.position.copy(_a.lerp(_b, f));
-  }
   survey.visible = m > 0.01;
+  if (survey.visible) updateSurvey(clamp01((s.missionP - 0.18) / 0.62), m);
   shadow.material.opacity = 1 - m;
 
   renderer.render(scene, camera);
